@@ -39,7 +39,7 @@ static _entradaCarpeta entradaCarpeta;
 
 void main() {			// Si este programa estuviese a nivel de kernel, el main tendría que ir al final sí o sí, aunque como no es el caso pues da un poco igual
 	FILE *archivo;
-	int a;
+	int a, b, c, d;
 	char *comando;
 	char _comando;
 	comando = &_comando;
@@ -78,7 +78,7 @@ void main() {			// Si este programa estuviese a nivel de kernel, el main tendrí
 	printf("Buenos dias\n");
 	
 	while (1) {
-		printf("Elige una opcion: ");
+		printf(">> ");
 		scanf("%s", comando);
 		while (getchar() != '\n');
 		if (!strcmp(comando, "info")) {
