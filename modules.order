@@ -1,1 +1,1 @@
-/home/ruben/kernel/hello.o
+/home/ruben/kernel/CurroFinalSistemas/hello.o
