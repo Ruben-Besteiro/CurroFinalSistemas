@@ -12,27 +12,27 @@
 
 // Estructura del superbloque
 typedef struct {
-    unsigned int s_inodes_count;
-    unsigned int s_blocks_count;
+    unsigned int cantidadDeInodos;
+    unsigned int cantidadDeBloques;
     unsigned int s_free_blocks_count;
     unsigned int s_free_inodes_count;
     unsigned int s_first_data_block;
     unsigned int s_block_size;
-    unsigned char s_relleno[SIZE_BLOQUE - 6 * sizeof(unsigned int)];
-} EXT_SIMPLE_SUPERBLOCK;
+    unsigned char s_relleno[512 - 6 * sizeof(unsigned int)];		// 512 es el tamaño del bloque expresado en bytes
+} superbloque;
 
 // Bytemaps
 typedef struct {
     unsigned char bmap_bloques[MAX_BLOQUES_PARTICION];
     unsigned char bmap_inodos[MAX_INODOS];
     unsigned char bmap_relleno[SIZE_BLOQUE - (MAX_BLOQUES_PARTICION + MAX_INODOS) * sizeof(char)];
-} EXT_BYTE_MAPS;
+} bytemaps;
 
 // Inodo simplificado
 typedef struct {
     unsigned int size_fichero;
     unsigned short int i_nbloque[MAX_NUMS_BLOQUE_INODO];
-} EXT_SIMPLE_INODE;
+} inodo;
 
 // Entrada de directorio
 typedef struct {
@@ -40,17 +40,17 @@ typedef struct {
     unsigned short int dir_inodo;
 } EXT_ENTRADA_DIR;
 
-// Variables globales
-static EXT_SIMPLE_SUPERBLOCK superbloque;
-static EXT_BYTE_MAPS bytemaps;
-static EXT_SIMPLE_INODE lista_inodos[MAX_INODOS];
+// Estas variables tienen que ser static
+static superbloque superbloque;
+static bytemaps bytemaps;
+static inodo lista_inodos[24];		// El bytemap de inodos tiene 24 elementos
 static EXT_ENTRADA_DIR directorio[20];
 
 // Funciones para comandos
 static void comando_info(void) {
     printk(KERN_INFO "Superbloque:\n");
-    printk(KERN_INFO "Inodos totales: %u\n", superbloque.s_inodes_count);
-    printk(KERN_INFO "Bloques totales: %u\n", superbloque.s_blocks_count);
+    printk(KERN_INFO "Inodos totales: %u\n", superbloque.cantidadDeInodos);
+    printk(KERN_INFO "Bloques totales: %u\n", superbloque.cantidadDeBloques);
     printk(KERN_INFO "Bloques libres: %u\n", superbloque.s_free_blocks_count);
     printk(KERN_INFO "Inodos libres: %u\n", superbloque.s_free_inodes_count);
     printk(KERN_INFO "Primer bloque de datos: %u\n", superbloque.s_first_data_block);
@@ -72,7 +72,10 @@ static void comando_bytemaps(void) {
 
 // Inicialización del módulo
 static int __init simul_ext_init(void) {
+    int i;
     printk(KERN_INFO "Iniciando simulador de sistema de ficheros EXT simplificado\n");
+
+	fopen("particion.bin", "rb");
 
     // Inicializar estructuras con datos simulados
     superbloque.s_inodes_count = MAX_INODOS;
@@ -82,8 +85,16 @@ static int __init simul_ext_init(void) {
     superbloque.s_first_data_block = 5;
     superbloque.s_block_size = SIZE_BLOQUE;
 
-    // Simular datos de bytemaps    memset(bytemaps.bmap_bloques, 0, MAX_BLOQUES_PARTICION);
-    memset(bytemaps.bmap_inodos, 0, MAX_INODOS);
+    // Inicializar bytemaps manualmente
+    for (i = 0; i < MAX_BLOQUES_PARTICION; i++) {
+        bytemaps.bmap_bloques[i] = 0;
+    }
+    for (i = 0; i < MAX_INODOS; i++) {
+        bytemaps.bmap_inodos[i] = 0;
+    }
+    for (i = 0; i < (SIZE_BLOQUE - (MAX_BLOQUES_PARTICION + MAX_INODOS) * sizeof(char)); i++) {
+        bytemaps.bmap_relleno[i] = 0;
+    }
 
     // Marcar bloques e inodos reservados
     bytemaps.bmap_bloques[0] = 1;
@@ -97,7 +108,8 @@ static int __init simul_ext_init(void) {
 
     comando_info();
     comando_bytemaps();
-
+	
+	fclose("particion.bin");
     return 0;
 }
 
