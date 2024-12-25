@@ -1,1 +1,0 @@
-savedcmd_/home/ruben/kernel/CurroFinalSistemas/hello.mod := printf '%s\n'   hello.o | awk '!x[$$0]++ { print("/home/ruben/kernel/CurroFinalSistemas/"$$0) }' > /home/ruben/kernel/CurroFinalSistemas/hello.mod

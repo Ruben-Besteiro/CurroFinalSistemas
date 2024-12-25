@@ -1,1 +1,0 @@
-savedcmd_/home/ruben/kernel/CurroFinalSistemas/Module.symvers :=  scripts/mod/modpost -M -m -a      -o /home/ruben/kernel/CurroFinalSistemas/Module.symvers -T /home/ruben/kernel/CurroFinalSistemas/modules.order -i Module.symvers -e 
