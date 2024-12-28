@@ -2,9 +2,9 @@
 #include <stdlib.h>
 #include <string.h>
 
-#define TAMAGNO_BLOQUE 512		// Todo esto sale en el pdf
-#define MAX_BLOQUES 100
-#define MAX_INODOS 25000			// Esto tuve que cambiarlo
+#define TAMAGNO_BLOQUE 512       // Tamaño de cada bloque
+#define MAX_BLOQUES 100          // Máximo número de bloques
+#define MAX_INODOS 20            // Número máximo de inodos
 #define NUM_BLOQUES_POR_CADA_INODO 7
 #define LEN_NFICH 20
 
@@ -20,8 +20,8 @@ typedef struct {
 
 typedef struct {
     unsigned char bytemapBloques[MAX_BLOQUES];
-    unsigned char bytemapInodos[20];
-    unsigned char bytemapRelleno[TAMAGNO_BLOQUE - (MAX_BLOQUES + 24) * sizeof(char)];
+    unsigned char bytemapInodos[MAX_INODOS];
+    unsigned char bytemapRelleno[TAMAGNO_BLOQUE - (MAX_BLOQUES + MAX_INODOS) * sizeof(char)];
 } _bytemap;
 
 typedef struct {
@@ -30,38 +30,46 @@ typedef struct {
 } _inodo;
 
 typedef struct {
-    unsigned char archivo[LEN_NFICH];
+    char archivo[LEN_NFICH];
     unsigned short int inodo;
 } _directorio;
 
 // Variables globales
 _superbloque superbloque;
 _bytemap bytemaps;
-_inodo lista_inodos[20];		// MAX_INODOS se supone que es 20 pero lo cambié a 25000
-_directorio directorio[20];
+_inodo lista_inodos[MAX_INODOS];
+_directorio directorio[MAX_INODOS];
 char particion[MAX_BLOQUES][TAMAGNO_BLOQUE];
 
-void main() {
-	FILE *f = fopen("particion.bin", "rb");
+// Prototipos
+void comando_info();
+void comando_bytemaps();
+void comando_dir();
+void comando_imprimir();
+void comando_remove(char *nombre);
+void comando_copy(char *origen, char *destino);
+void comando_rename(char *antiguo, char *nuevo);
+
+int main() {
+    FILE *f = fopen("particion.bin", "rb");
     if (!f) {
-        printf("Error al abrir el archivo");
-        exit(1);
+        printf("Error al abrir el archivo\n");
+        return 1;
     }
     fread(particion, TAMAGNO_BLOQUE, MAX_BLOQUES, f);
     fclose(f);
 
-    memcpy(&superbloque, particion[0], sizeof(_superbloque));		// Bloques 0-3
+    memcpy(&superbloque, particion[0], sizeof(_superbloque));
     memcpy(&bytemaps, particion[1], sizeof(_bytemap));
     memcpy(lista_inodos, particion[2], sizeof(lista_inodos));
     memcpy(directorio, particion[3], sizeof(directorio));
-    
-	char comando[10];
+
+    char comando[10];
     while (1) {
         printf(">> ");
         scanf("%s", comando);
         if (strcmp(comando, "salir") == 0) {
-			printf("Que tenga un buen dia\n");
-			fclose(f);
+            printf("Que tenga un buen dia\n");
             break;
         } else if (strcmp(comando, "info") == 0) {
             comando_info();
@@ -70,7 +78,6 @@ void main() {
         } else if (strcmp(comando, "dir") == 0) {
             comando_dir();
         } else if (strcmp(comando, "imprimir") == 0) {
-            char nombre[LEN_NFICH];
             comando_imprimir();
         } else if (strcmp(comando, "remove") == 0) {
             char nombre[LEN_NFICH];
@@ -88,26 +95,28 @@ void main() {
             printf("Comando desconocido\n");
         }
     }
+
+    return 0;
 }
 
 void comando_info() {
-	printf("INFORMACION DEL SUPERBLOQUE\n");
+    printf("INFORMACION DEL SUPERBLOQUE\n");
     printf("Inodos totales: %d\n", superbloque.cantidadDeInodos);
     printf("Bloques totales: %d\n", superbloque.cantidadDeBloques);
     printf("Bloques libres: %d\n", superbloque.bloquesLibres);
     printf("Inodos libres: %d\n", superbloque.inodosLibres);
     printf("Primer bloque de datos: %d\n", superbloque.primerBloqueNoReservado);
-    printf("Tamagno de bloque: %d\n", superbloque.tamañoBloque);
+    printf("Tamaño de bloque: %d bytes\n", superbloque.tamañoBloque);
 }
 
 void comando_bytemaps() {
-	printf("BYTEMAPS (0 SIGNIFICA LIBRE Y 1 SIGNIFICA OCUPADO)\n");
+    printf("BYTEMAPS (0 SIGNIFICA LIBRE Y 1 SIGNIFICA OCUPADO)\n");
     printf("Bloques: ");
     for (int i = 0; i < 25; i++) {
         printf("%d ", bytemaps.bytemapBloques[i]);
     }
     printf("\nInodos: ");
-    for (int i = 0; i < 20; i++) {
+    for (int i = 0; i < MAX_INODOS; i++) {
         printf("%d ", bytemaps.bytemapInodos[i]);
     }
     printf("\n");
@@ -115,35 +124,30 @@ void comando_bytemaps() {
 
 void comando_dir() {
     printf("LISTA DE FICHEROS:\n");
-    for (int i = 0; i < 20; i++) {
+    for (int i = 0; i < MAX_INODOS; i++) {
         if (directorio[i].inodo != 0xFFFF) {
-            if (directorio[i].inodo < MAX_INODOS) {
-                _inodo *inodx = &lista_inodos[directorio[i].inodo];
-                if (inodx->tamañoFichero > 0) {
-                    printf("Nombre: %s, Tamagno: %d, Inodo: %d, Bloques: ",  directorio[i].archivo, inodx->tamañoFichero, directorio[i].inodo);
-                    for (int j = 0; j < NUM_BLOQUES_POR_CADA_INODO; j++) {
-                        if (inodx->bloques[j] != 0xFFFF && inodx->bloques[j] < MAX_BLOQUES) {
-                            printf("%d ", inodx->bloques[j]);
-                        }
-                    }
-                    printf("\n");
+            _inodo *inodo = &lista_inodos[directorio[i].inodo];
+            printf("Nombre: %s, Tamaño: %u bytes, Inodo: %u, Bloques: ",
+                   directorio[i].archivo, inodo->tamañoFichero, directorio[i].inodo);
+            for (int j = 0; j < NUM_BLOQUES_POR_CADA_INODO; j++) {
+                if (inodo->bloques[j] != 0xFFFF) {
+                    printf("%u ", inodo->bloques[j]);
                 }
-			}
+            }
+            printf("\n");
         }
     }
 }
 
-
 void comando_imprimir() {
-	char nombre[20];
-	scanf("%s", &nombre);
-	
-    for (int i = 0; i < 20; i++) {
+    char nombre[LEN_NFICH];
+    scanf("%s", nombre);
+    for (int i = 0; i < MAX_INODOS; i++) {
         if (!strcmp(directorio[i].archivo, nombre) && directorio[i].inodo != 0xFFFF) {
-            _inodo *inodx = &lista_inodos[directorio[i].inodo];
+            _inodo *inodo = &lista_inodos[directorio[i].inodo];
             for (int j = 0; j < NUM_BLOQUES_POR_CADA_INODO; j++) {
-                if (inodx->bloques[j] != 0xFFFF) {
-                    fwrite(particion[inodx->bloques[j]], 1, TAMAGNO_BLOQUE, stdout);
+                if (inodo->bloques[j] != 0xFFFF) {
+                    fwrite(particion[inodo->bloques[j]], 1, TAMAGNO_BLOQUE, stdout);
                 }
             }
             printf("\n");
@@ -154,20 +158,20 @@ void comando_imprimir() {
 }
 
 void comando_remove(char *nombre) {
-    for (int i = 0; i < 20; i++) {
+    for (int i = 0; i < MAX_INODOS; i++) {
         if (!strcmp(directorio[i].archivo, nombre) && directorio[i].inodo != 0xFFFF) {
             unsigned short int inodo_index = directorio[i].inodo;
-            _inodo *inodx = &lista_inodos[inodo_index];
+            _inodo *inodo = &lista_inodos[inodo_index];
 
-            for (int j = 0; j < NUM_BLOQUES_POR_CADA_INODO; j++) {		// Segmentation fault en este for
-                if (inodx->bloques[j] != 0xFFFF) {
-                    bytemaps.bytemapBloques[inodx->bloques[j]] = 0;
-                    inodx->bloques[j] = 0xFFFF;
+            for (int j = 0; j < NUM_BLOQUES_POR_CADA_INODO; j++) {
+                if (inodo->bloques[j] != 0xFFFF) {
+                    bytemaps.bytemapBloques[inodo->bloques[j]] = 0;
+                    inodo->bloques[j] = 0xFFFF;
                 }
             }
 
             bytemaps.bytemapInodos[inodo_index] = 0;
-            inodx->tamañoFichero = 0;
+            inodo->tamañoFichero = 0;
             directorio[i].inodo = 0xFFFF;
             memset(directorio[i].archivo, 0, LEN_NFICH);
 
@@ -180,7 +184,7 @@ void comando_remove(char *nombre) {
 
 void comando_copy(char *origen, char *destino) {
     int inodo_origen = -1;
-    for (int i = 0; i < 20; i++) {
+    for (int i = 0; i < MAX_INODOS; i++) {
         if (!strcmp(directorio[i].archivo, origen) && directorio[i].inodo != 0xFFFF) {
             inodo_origen = directorio[i].inodo;
             break;
@@ -191,7 +195,7 @@ void comando_copy(char *origen, char *destino) {
         return;
     }
 
-    for (int i = 0; i < 20; i++) {
+    for (int i = 0; i < MAX_INODOS; i++) {
         if (!strcmp(directorio[i].archivo, destino)) {
             printf("Fichero destino ya existe\n");
             return;
@@ -206,12 +210,22 @@ void comando_copy(char *origen, char *destino) {
         }
     }
 
+    if (inodo_libre == -1) {
+        printf("No hay inodos libres\n");
+        return;
+    }
+
     int entrada_libre = -1;
-    for (int i = 0; i < 20; i++) {
+    for (int i = 0; i < MAX_INODOS; i++) {
         if (directorio[i].inodo == 0xFFFF) {
             entrada_libre = i;
             break;
         }
+    }
+
+    if (entrada_libre == -1) {
+        printf("No hay espacio en el directorio\n");
+        return;
     }
 
     _inodo *inodo_destino = &lista_inodos[inodo_libre];
@@ -227,6 +241,7 @@ void comando_copy(char *origen, char *destino) {
                     break;
                 }
             }
+
             if (bloque_libre == -1) {
                 printf("No hay bloques libres\n");
                 return;
@@ -248,15 +263,15 @@ void comando_copy(char *origen, char *destino) {
 }
 
 void comando_rename(char *antiguo, char *nuevo) {
-    for (int i = 0; i < 20; i++) {		// Es hasta 20 porque en la partición hay hasta 20 archivos
-        if (strcmp(directorio[i].archivo, nuevo) == 0) {
+    for (int i = 0; i < MAX_INODOS; i++) {
+        if (!strcmp(directorio[i].archivo, nuevo)) {
             printf("Error: El nombre destino ya existe\n");
             return;
         }
     }
 
-    for (int i = 0; i < 20; i++) {
-        if (strcmp(directorio[i].archivo, antiguo) == 0) {
+    for (int i = 0; i < MAX_INODOS; i++) {
+        if (!strcmp(directorio[i].archivo, antiguo)) {
             strcpy(directorio[i].archivo, nuevo);
             printf("Fichero renombrado\n");
             return;
