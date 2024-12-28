@@ -119,7 +119,7 @@ void comando_dir() {
         if (directorio[i].inodo != 0xFFFF) {
             if (directorio[i].inodo < MAX_INODOS) {
                 _inodo *inodx = &lista_inodos[directorio[i].inodo];
-                if (inodx->tamañoFichero > 0) {
+                if (inodx->tamañoFichero > 0) { // Mostrar solo archivos no vacíos
                     printf("Nombre: %s, Tamagno: %d, Inodo: %d, Bloques: ",  directorio[i].archivo, inodx->tamañoFichero, directorio[i].inodo);
                     for (int j = 0; j < NUM_BLOQUES_POR_CADA_INODO; j++) {
                         if (inodx->bloques[j] != 0xFFFF && inodx->bloques[j] < MAX_BLOQUES) {
@@ -159,7 +159,7 @@ void comando_remove(char *nombre) {
             unsigned short int inodo_index = directorio[i].inodo;
             _inodo *inodx = &lista_inodos[inodo_index];
 
-            for (int j = 0; j < NUM_BLOQUES_POR_CADA_INODO; j++) {		// Segmentation fault en este for
+            for (int j = 0; j < NUM_BLOQUES_POR_CADA_INODO; j++) { // Segmentation fault en este for
                 if (inodx->bloques[j] != 0xFFFF) {
                     bytemaps.bytemapBloques[inodx->bloques[j]] = 0;
                     inodx->bloques[j] = 0xFFFF;
@@ -248,7 +248,7 @@ void comando_copy(char *origen, char *destino) {
 }
 
 void comando_rename(char *antiguo, char *nuevo) {
-    for (int i = 0; i < 20; i++) {		// Es hasta 20 porque en la partición hay hasta 20 archivos
+    for (int i = 0; i < 20; i++) { // Es hasta 20 porque en la partición hay hasta 20 archivos
         if (strcmp(directorio[i].archivo, nuevo) == 0) {
             printf("Error: El nombre destino ya existe\n");
             return;
