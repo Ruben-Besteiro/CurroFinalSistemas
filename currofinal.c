@@ -59,28 +59,28 @@ void main() {
     while (1) {
         printf(">> ");
         scanf("%s", comando);
-        if (strcmp(comando, "salir") == 0) {
+        if (!strcmp(comando, "salir")) {
 			printf("Que tenga un buen dia\n");
 			fclose(f);
             break;
-        } else if (strcmp(comando, "info") == 0) {
+        } else if (!strcmp(comando, "info")) {
             comando_info();
-        } else if (strcmp(comando, "bytemaps") == 0) {
+        } else if (!strcmp(comando, "bytemaps")) {
             comando_bytemaps();
-        } else if (strcmp(comando, "dir") == 0) {
+        } else if (!strcmp(comando, "dir")) {
             comando_dir();
-        } else if (strcmp(comando, "imprimir") == 0) {
+        } else if (!strcmp(comando, "imprimir")) {
             char nombre[LEN_NFICH];
             comando_imprimir();
-        } else if (strcmp(comando, "remove") == 0) {
+        } else if (!strcmp(comando, "remove")) {
             char nombre[LEN_NFICH];
             scanf("%s", nombre);
             comando_remove(nombre);
-        } else if (strcmp(comando, "copy") == 0) {
+        } else if (!strcmp(comando, "copy")) {
             char origen[LEN_NFICH], destino[LEN_NFICH];
             scanf("%s %s", origen, destino);
             comando_copy(origen, destino);
-        } else if (strcmp(comando, "rename") == 0) {
+        } else if (!strcmp(comando, "rename")) {
             char antiguo[LEN_NFICH], nuevo[LEN_NFICH];
             scanf("%s %s", antiguo, nuevo);
             comando_rename(antiguo, nuevo);
@@ -116,10 +116,10 @@ void comando_bytemaps() {
 void comando_dir() {
     printf("LISTA DE FICHEROS:\n");
     for (int i = 0; i < 20; i++) {
-        if (directorio[i].inodo != 0xFFFF) {
+        if (directorio[i].inodo != 0xFFFF && directorio[i].archivo[0] >= ' ' && directorio[i].archivo[0] <= 'z') {		// Lo último es por si nos sale un archivo que no empieza por un carácter válido que no salga
             if (directorio[i].inodo < MAX_INODOS) {
-                _inodo *inodx = &lista_inodos[directorio[i].inodo];
-                if (inodx->tamañoFichero > 0) { // Mostrar solo archivos no vacíos
+                _inodo *inodx = &(lista_inodos[directorio[i].inodo]);
+                if (inodx->tamañoFichero > 0) {
                     printf("Nombre: %s, Tamagno: %d, Inodo: %d, Bloques: ",  directorio[i].archivo, inodx->tamañoFichero, directorio[i].inodo);
                     for (int j = 0; j < NUM_BLOQUES_POR_CADA_INODO; j++) {
                         if (inodx->bloques[j] != 0xFFFF && inodx->bloques[j] < MAX_BLOQUES) {
@@ -139,7 +139,7 @@ void comando_imprimir() {
 	scanf("%s", &nombre);
 	
     for (int i = 0; i < 20; i++) {
-        if (!strcmp(directorio[i].archivo, nombre) && directorio[i].inodo != 0xFFFF) {
+        if (!strcmp(directorio[i].archivo, nombre) && directorio[i].inodo != 0xFFFF && directorio[i].archivo[0] != '\0') {
             _inodo *inodx = &lista_inodos[directorio[i].inodo];
             for (int j = 0; j < NUM_BLOQUES_POR_CADA_INODO; j++) {
                 if (inodx->bloques[j] != 0xFFFF) {
@@ -156,21 +156,20 @@ void comando_imprimir() {
 void comando_remove(char *nombre) {
     for (int i = 0; i < 20; i++) {
         if (!strcmp(directorio[i].archivo, nombre) && directorio[i].inodo != 0xFFFF) {
-            unsigned short int inodo_index = directorio[i].inodo;
-            _inodo *inodx = &lista_inodos[inodo_index];
+			directorio[i].archivo[0] = '\0';		// Para vaciar su nombre basta con borrar el primer carácter
+			int inodoDelArchivoBorrado = directorio[i].inodo;
+			directorio[i].inodo = 0;
 
-            for (int j = 0; j < NUM_BLOQUES_POR_CADA_INODO; j++) { // Segmentation fault en este for
+			bytemaps.bytemapInodos[inodoDelArchivoBorrado] = 0;
+			
+            _inodo *inodx = &lista_inodos[directorio[i].inodo];
+			for (int j = 0; j < NUM_BLOQUES_POR_CADA_INODO; j++) {
                 if (inodx->bloques[j] != 0xFFFF) {
                     bytemaps.bytemapBloques[inodx->bloques[j]] = 0;
                     inodx->bloques[j] = 0xFFFF;
                 }
             }
-
-            bytemaps.bytemapInodos[inodo_index] = 0;
-            inodx->tamañoFichero = 0;
-            directorio[i].inodo = 0xFFFF;
-            memset(directorio[i].archivo, 0, LEN_NFICH);
-
+			
             printf("Fichero eliminado\n");
             return;
         }
@@ -248,9 +247,9 @@ void comando_copy(char *origen, char *destino) {
 }
 
 void comando_rename(char *antiguo, char *nuevo) {
-    for (int i = 0; i < 20; i++) { // Es hasta 20 porque en la partición hay hasta 20 archivos
+    for (int i = 0; i < 20; i++) {		// Es hasta 20 porque en la partición hay hasta 20 archivos
         if (strcmp(directorio[i].archivo, nuevo) == 0) {
-            printf("Error: El nombre destino ya existe\n");
+            printf("Error: Ese nombre ya existe\n");
             return;
         }
     }
