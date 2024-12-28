@@ -41,6 +41,8 @@ _inodo lista_inodos[20];		// MAX_INODOS se supone que es 20 pero lo cambié a 25
 _directorio directorio[20];
 char particion[MAX_BLOQUES][TAMAGNO_BLOQUE];
 
+
+
 void main() {
 	FILE *f = fopen("particion.bin", "rb");
     if (!f) {
@@ -57,6 +59,8 @@ void main() {
     
 	char comando[10];
     while (1) {
+		printf("Buenos días\n");
+		printf("Introduce un comando\n");
         printf(">> ");
         scanf("%s", comando);
         if (!strcmp(comando, "salir")) {
@@ -134,16 +138,34 @@ void comando_dir() {
 }
 
 
-void comando_imprimir() {
+/*void comando_imprimir() {
 	char nombre[20];
 	scanf("%s", &nombre);
 	
     for (int i = 0; i < 20; i++) {
-        if (!strcmp(directorio[i].archivo, nombre) && directorio[i].inodo != 0xFFFF && directorio[i].archivo[0] != '\0') {
+        if (!strcmp(directorio[i].archivo, nombre) && directorio[i].inodo != 0xFFFF) {
             _inodo *inodx = &lista_inodos[directorio[i].inodo];
             for (int j = 0; j < NUM_BLOQUES_POR_CADA_INODO; j++) {
-                if (inodx->bloques[j] != 0xFFFF) {
+                if (inodx->bloques[j] != 0xFFFF && inodx->tamañoFichero > 0) {
                     fwrite(particion[inodx->bloques[j]], 1, TAMAGNO_BLOQUE, stdout);
+                }
+            }
+            printf("\n");
+            return;
+        }
+    }
+    printf("Fichero no encontrado\n");
+}*/
+void comando_imprimir() {
+    char nombre[20];
+    scanf("%s", &nombre);
+
+    for (int i = 0; i < 20; i++) {
+        if (!strcmp(directorio[i].archivo, nombre) && directorio[i].inodo != 0xFFFF) {
+            _inodo *inodx = &lista_inodos[directorio[i].inodo];
+            for (int j = 0; j < NUM_BLOQUES_POR_CADA_INODO; j++) {
+                if (inodx->bloques[j] != 0xFFFF && inodx->tamañoFichero > 0) {		// Lo último es para que no imprima archivos borrados
+					fwrite(particion[inodx->bloques[j]], 1, sizeof(particion[inodx->bloques[j]])-100, stdout);		// Hay que usar
                 }
             }
             printf("\n");
@@ -153,12 +175,13 @@ void comando_imprimir() {
     printf("Fichero no encontrado\n");
 }
 
+
 void comando_remove(char *nombre) {
     for (int i = 0; i < 20; i++) {
         if (!strcmp(directorio[i].archivo, nombre) && directorio[i].inodo != 0xFFFF) {
 			directorio[i].archivo[0] = '\0';		// Para vaciar su nombre basta con borrar el primer carácter
 			int inodoDelArchivoBorrado = directorio[i].inodo;
-			directorio[i].inodo = 0;
+			directorio[i].inodo = 21;		// El bytemap de inodos llega hasta el 20, así que ponerle 21 es como si existiese fuera del disco duro
 
 			bytemaps.bytemapInodos[inodoDelArchivoBorrado] = 0;
 			
