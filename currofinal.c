@@ -39,7 +39,7 @@ _superbloque superbloque;
 _bytemap bytemaps;
 _inodo lista_inodos[20];		// MAX_INODOS se supone que es 20 pero lo cambié a 25000
 _directorio directorio[20];
-char particion[MAX_BLOQUES][TAMAGNO_BLOQUE];
+char particion[MAX_BLOQUES][TAMAGNO_BLOQUE];		// En este array se almacenan los datos de la partición nada más leerlos antes de ser procesados
 
 
 
@@ -52,7 +52,7 @@ void main() {
     fread(particion, TAMAGNO_BLOQUE, MAX_BLOQUES, f);
     fclose(f);
 
-    memcpy(&superbloque, particion[0], sizeof(_superbloque));		// Bloques 0-3
+    memcpy(&superbloque, particion[0], sizeof(_superbloque));		// Copiamos los 4 primeros bloques en sus respectivas estructuras
     memcpy(&bytemaps, particion[1], sizeof(_bytemap));
     memcpy(lista_inodos, particion[2], sizeof(lista_inodos));
     memcpy(directorio, particion[3], sizeof(directorio));
@@ -66,7 +66,7 @@ void main() {
         if (!strcmp(comando, "salir")) {
 			printf("Que tenga un buen dia\n");
 			fclose(f);
-            break;
+            exit(0);
         } else if (!strcmp(comando, "info")) {
             comando_info();
         } else if (!strcmp(comando, "bytemaps")) {
